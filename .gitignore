@@ -1,2 +1,3 @@
 build/
 sdkconfig*
+components/esp32_pbtx_lib

@@ -28,12 +28,17 @@
 #include "pbtx_client.h"
 
 
-#define TAG "MAIN"
+#define BUFLEN 1024
+
+
 
 void app_main() {
 
-    char* buf = malloc(512);
-    size_t ret = pbtx_create_private_key(PBTX_KEY_TYPE_ANTELOPE_K1, buf, 512);
+    unsigned char* buf = malloc(BUFLEN);
+    int ret = pbtx_create_private_key(PBTX_KEY_TYPE_ANTELOPE_K1, buf, BUFLEN);
+    if( ret == 0 ) {
+        mbedtls_printf((char*)buf);
+    }
 }
 
 
