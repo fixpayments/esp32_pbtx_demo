@@ -23,9 +23,29 @@
 #include "esp_log.h"
 #include "esp_system.h"
 
+#include "mbedtls/platform.h"
+
+#include "pbtx_client.h"
+
+
 #define TAG "MAIN"
 
 void app_main() {
 
+    char* buf = malloc(512);
+    size_t ret = pbtx_create_private_key(PBTX_KEY_TYPE_ANTELOPE_K1, buf, 512);
 }
 
+
+
+
+static void dump_buf( const char *title, unsigned char *buf, size_t len )
+{
+    size_t i;
+
+    mbedtls_printf( "%s", title );
+    for( i = 0; i < len; i++ )
+        mbedtls_printf("%c%c", "0123456789ABCDEF" [buf[i] / 16],
+                       "0123456789ABCDEF" [buf[i] % 16] );
+    mbedtls_printf( "\n" );
+}
