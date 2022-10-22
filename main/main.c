@@ -25,6 +25,7 @@
 
 #include "mbedtls/platform.h"
 
+#include "pbtx_signature_provider.h"
 #include "pbtx_client.h"
 
 
@@ -33,24 +34,9 @@
 
 
 void app_main() {
-
-    unsigned char* buf = malloc(BUFLEN);
-    int ret = pbtx_create_private_key(PBTX_KEY_TYPE_ANTELOPE_K1, buf, BUFLEN);
-    if( ret == 0 ) {
-        mbedtls_printf((char*)buf);
-    }
+    pbtx_sigp_init();
 }
 
 
 
 
-static void dump_buf( const char *title, unsigned char *buf, size_t len )
-{
-    size_t i;
-
-    mbedtls_printf( "%s", title );
-    for( i = 0; i < len; i++ )
-        mbedtls_printf("%c%c", "0123456789ABCDEF" [buf[i] / 16],
-                       "0123456789ABCDEF" [buf[i] % 16] );
-    mbedtls_printf( "\n" );
-}
