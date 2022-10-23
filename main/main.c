@@ -23,20 +23,48 @@
 #include "esp_log.h"
 #include "esp_system.h"
 
-#include "mbedtls/platform.h"
 
-#include "pbtx_signature_provider.h"
 #include "pbtx_client.h"
+#include "pbtx_signature_provider.h"
 
+
+static const char* TAG = "main";
 
 #define BUFLEN 1024
 
+static unsigned char buf[BUFLEN];
+
+
+
+static void dump_buf( unsigned char *buf, size_t len )
+{
+    size_t i;
+    for( i = 0; i < len; i++ )
+        printf("%c%c", "0123456789ABCDEF" [buf[i] / 16],
+               "0123456789ABCDEF" [buf[i] % 16] );
+    printf( "\n" );
+}
 
 
 void app_main() {
-    pbtx_sigp_init();
-}
+    pbtx_client_init();
+    size_t olen;
+    int err = pbtx_client_get_public_key(buf, BUFLEN, &olen);
+    if( err != 0 ) {
+        ESP_LOGE(TAG, "pbtx_client_get_public_key returned %d", err);
+    }
+    ESP_LOGI(TAG, "key len: %d", olen);
+    dump_buf(buf, olen);
 
+    char* msg = "message";
+    err = pbtx_sigp_sign((unsigned char*) msg, strlen(msg), buf, BUFLEN,  &olen);
+    if( err != 0 ) {
+        ESP_LOGE(TAG, "pbtx_sigp_sign returned %d", err);
+    }    
+
+    ESP_LOGI(TAG, "sig len: %d", olen);
+    dump_buf(buf, olen);
+}
 
 
 
