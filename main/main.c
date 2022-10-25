@@ -59,11 +59,12 @@ void app_main() {
     char* msg = "message";
     err = pbtx_sigp_sign((unsigned char*) msg, strlen(msg), buf, BUFLEN,  &olen);
     if( err != 0 ) {
-        ESP_LOGE(TAG, "pbtx_sigp_sign returned %d", err);
+        ESP_LOGE(TAG, "pbtx_sigp_sign returned %x", -err);
     }    
-
-    ESP_LOGI(TAG, "sig len: %d", olen);
-    dump_buf(buf, olen);
+    else {
+        ESP_LOGI(TAG, "sig len: %d", olen);
+        dump_buf(buf, olen);
+    }
 }
 
 
