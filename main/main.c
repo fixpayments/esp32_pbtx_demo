@@ -22,11 +22,9 @@
 
 #include "esp_log.h"
 #include "esp_system.h"
-
+#include <sys/time.h>
 
 #include "pbtx_client.h"
-#include "pbtx_signature_provider.h"
-
 
 static const char* TAG = "main";
 
@@ -53,18 +51,31 @@ void app_main() {
     if( err != 0 ) {
         ESP_LOGE(TAG, "pbtx_client_get_public_key returned %d", err);
     }
-    ESP_LOGI(TAG, "key len: %d", olen);
+    ESP_LOGI(TAG, "key len: %d\nkey:", olen);
     dump_buf(buf, olen);
 
-    char* msg = "message";
-    err = pbtx_sigp_sign((unsigned char*) msg, strlen(msg), buf, BUFLEN,  &olen);
+    char* msg = "message message message message message";
+    ESP_LOGI(TAG, "Message:");
+    dump_buf((unsigned char*)msg, strlen(msg));
+
+    struct timeval tv_now;
+    gettimeofday(&tv_now, NULL);
+    int64_t time_start_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
+    
+    err = pbtx_client_sign_data((unsigned char*) msg, strlen(msg), buf, BUFLEN,  &olen);
+    
+    gettimeofday(&tv_now, NULL);
+    int64_t time_stop_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
+
     if( err != 0 ) {
         ESP_LOGE(TAG, "pbtx_sigp_sign returned %x", -err);
     }    
     else {
-        ESP_LOGI(TAG, "sig len: %d", olen);
+        ESP_LOGI(TAG, "sig len: %d\nsignature:", olen);
         dump_buf(buf, olen);
     }
+
+    ESP_LOGI(TAG, "Elapsed %f ms", (float)(time_stop_us - time_start_us)/1e3);
 }
 
 
