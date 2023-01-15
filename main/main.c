@@ -149,11 +149,12 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     switch(evt->event_id) {
 
     case HTTP_EVENT_ON_CONNECTED:
+        ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
         output_len = 0;
         break;
-        
+
     case HTTP_EVENT_ON_DATA:
-        ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+        ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d, output_len=%d", evt->data_len, output_len);
         memcpy(evt->user_data + output_len, evt->data, evt->data_len);
         output_len += evt->data_len;
         break;
@@ -172,7 +173,7 @@ void vTaskCode( void * pvParameters )
     }
 
     size_t content_length;
-    
+
     char url[128];
     strcpy(url, CONFIG_PBTXCLIENT_RPC_URL);
     strcat(url, "/register_account");
@@ -190,42 +191,81 @@ void vTaskCode( void * pvParameters )
     int err = esp_http_client_perform(client);
     if (err == ESP_OK) {
         content_length = esp_http_client_get_content_length(client);
-        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %d",
-                 esp_http_client_get_status_code(client), content_length);
+        int status_code = esp_http_client_get_status_code(client);
+        ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %d", status_code, content_length);
+        if( status_code >= 300 ) {
+            abort();
+        }
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
         abort();
     }
 
-    dump_buf(buf, content_length);
-    
-    assert(content_length < BUFLEN );        
+    esp_http_client_cleanup(client);
+
+    assert(content_length < BUFLEN );
     if( pbtx_client_rpc_register_account_response(buf, content_length) != 0 ) {
         esp_system_abort("pbtx_client_rpc_register_account_response error");
     }
 
+    ESP_LOGI(TAG, "sent register_account request");
 
-    /*
+    strcpy(url, CONFIG_PBTXCLIENT_RPC_URL);
+    strcat(url, "/send_transaction");
+
     for( ;; )
     {
         struct timeval tv_now;
         gettimeofday(&tv_now, NULL);
         int64_t time_start_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
 
-        size_t olen;
-        if( pbtx_client_rpc_transaction(4294900000, buf, 2048, buf, BUFLEN, &olen) != 0 ) {
+        for(int i = 0; i<2048; i++) {
+            buf[i] = (unsigned char) i;
+        }
+
+        size_t trx_msg_size;
+        if( pbtx_client_rpc_transaction(4294900000, buf, 2048, buf, BUFLEN, &trx_msg_size) != 0 ) {
             esp_system_abort("pbtx_client_rpc_transaction error");
         }
 
-        ESP_LOGI(TAG, "message length: %d", olen);
-                
+        ESP_LOGI(TAG, "transaction message length: %d", trx_msg_size);
+
         gettimeofday(&tv_now, NULL);
         int64_t time_stop_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
-                
-        ESP_LOGI(TAG, "Elapsed %f ms", (float)(time_stop_us - time_start_us)/1e3);
-        vTaskDelay(50);
+        ESP_LOGI(TAG, "Prepared the transaction in %f ms", (float)(time_stop_us - time_start_us)/1e3);
+
+
+        client = esp_http_client_init(&config);
+        esp_http_client_set_url(client, url);
+        esp_http_client_set_method(client, HTTP_METHOD_POST);
+        esp_http_client_set_header(client, "Content-Type", "application/octet-stream");
+        esp_http_client_set_post_field(client, (char*)buf, trx_msg_size);
+        int err = esp_http_client_perform(client);
+        if (err == ESP_OK) {
+            content_length = esp_http_client_get_content_length(client);
+            int status_code = esp_http_client_get_status_code(client);
+            ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %d", status_code, content_length);
+            if( status_code >= 300 ) {
+                abort();
+            }
+        } else {
+            ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+            abort();
+        }
+
+        esp_http_client_cleanup(client);
+
+        assert(content_length < BUFLEN );
+        if( pbtx_client_rpc_transaction_response(buf, content_length) != 0 ) {
+            esp_system_abort("pbtx_client_rpc_transaction_response error");
+        }
+
+        gettimeofday(&tv_now, NULL);
+        time_stop_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
+        ESP_LOGI(TAG, "Finished sending the transaction in %f ms", (float)(time_stop_us - time_start_us)/1e3);
+
+        vTaskDelay(10000/portTICK_PERIOD_MS);
     }
-*/
 }
 
 
